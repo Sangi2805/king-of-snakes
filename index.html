@@ -21,10 +21,13 @@
   <canvas id="gameCanvas" tabindex="0"></canvas>
 
   <div class="mobile-controls">
-    <button class="touch-btn up" id="upBtn" type="button">▲</button>
-    <button class="touch-btn left" id="leftBtn" type="button">◀</button>
-    <button class="touch-btn down" id="downBtn" type="button">▼</button>
-    <button class="touch-btn right" id="rightBtn" type="button">▶</button>
+    <button class="touch-btn" id="upBtn" type="button" aria-label="Move Up">▲</button>
+
+    <div class="ctrl-row">
+      <button class="touch-btn" id="leftBtn" type="button" aria-label="Move Left">◀</button>
+      <button class="touch-btn" id="downBtn" type="button" aria-label="Move Down">▼</button>
+      <button class="touch-btn" id="rightBtn" type="button" aria-label="Move Right">▶</button>
+    </div>
   </div>
 
   <script src="script.js"></script>
