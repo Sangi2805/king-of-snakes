@@ -28,7 +28,7 @@ King of Snakes is a jungle-themed snake web game built with HTML, CSS, and JavaS
 - `snake-title.png` — optional title image
 
 ## Live Game
-Add your GitHub Pages link here after publishing.
+https://sangi2805.github.io/king-of-snakes/
 
 ## Author
-Lakshmi Selvakumar
+Sangaranarayanan
