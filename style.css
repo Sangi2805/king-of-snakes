@@ -62,51 +62,21 @@ body {
 }
 
 .mobile-controls {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 14px;
-  height: 160px;
-  pointer-events: none;
-  z-index: 30;
+  display: none;
 }
 
 .touch-btn {
-  position: absolute;
-  width: 64px;
-  height: 64px;
   border: none;
   border-radius: 50%;
-  background: rgba(29, 95, 47, 0.9);
+  background: rgba(40, 130, 65, 0.88);
   color: white;
-  font-size: 28px;
   font-weight: bold;
-  pointer-events: auto;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .touch-btn:active {
   transform: scale(0.97);
-}
-
-.up {
-  left: 92px;
-  bottom: 82px;
-}
-
-.left {
-  left: 18px;
-  bottom: 12px;
-}
-
-.down {
-  left: 92px;
-  bottom: 12px;
-}
-
-.right {
-  left: 166px;
-  bottom: 12px;
 }
 
 @media (min-width: 901px) {
@@ -136,5 +106,35 @@ body {
   .top-actions button {
     font-size: 12px;
     padding: 8px 10px;
+  }
+
+  .mobile-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    height: 188px;
+    padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+    background: rgba(7, 28, 16, 0.48);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(120, 200, 140, 0.18);
+    position: relative;
+    z-index: 30;
+  }
+
+  .ctrl-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+  }
+
+  .touch-btn {
+    position: relative;
+    width: 82px;
+    height: 82px;
+    font-size: 34px;
   }
 }
