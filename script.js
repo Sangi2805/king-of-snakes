@@ -4,12 +4,10 @@ const ctx = canvas.getContext("2d");
 const muteButton = document.getElementById("muteButton");
 const restartButton = document.getElementById("restartButton");
 const topbar = document.querySelector(".topbar");
-const mobileControls = document.querySelector(".mobile-controls");
 
-const upBtn = document.getElementById("upBtn");
-const downBtn = document.getElementById("downBtn");
-const leftBtn = document.getElementById("leftBtn");
-const rightBtn = document.getElementById("rightBtn");
+function isMobileDevice() {
+  return window.innerWidth <= 900;
+}
 
 function getViewportHeight() {
   if (window.visualViewport) {
@@ -19,15 +17,9 @@ function getViewportHeight() {
 }
 
 function resizeCanvas() {
-  const isMobile = window.innerWidth <= 900;
-  const controlsHeight = isMobile ? mobileControls.offsetHeight : 0;
   const viewportHeight = getViewportHeight();
-
   canvas.width = window.innerWidth;
-  canvas.height = Math.max(
-    220,
-    Math.floor(viewportHeight - topbar.offsetHeight - controlsHeight)
-  );
+  canvas.height = Math.max(220, Math.floor(viewportHeight - topbar.offsetHeight));
 }
 
 resizeCanvas();
@@ -228,13 +220,20 @@ muteButton.addEventListener("click", () => {
 });
 
 restartButton.addEventListener("click", () => {
-  resetGame();
-
-  if (document.activeElement) {
-    document.activeElement.blur();
+  if (isMobileDevice()) {
+    if (gameOver || gameWon) {
+      resetGame();
+      beginCountdown();
+    } else {
+      resetGame();
+    }
+  } else {
+    resetGame();
+    if (document.activeElement) {
+      document.activeElement.blur();
+    }
+    canvas.focus();
   }
-
-  canvas.focus();
 });
 
 // ---------- STORAGE ----------
@@ -435,6 +434,8 @@ function resetGame() {
   countdownTimer = countdownFramesTotal;
   gameStarted = false;
 
+  swipeTracking = false;
+
   goldenBird.active = false;
   goldenBird.x = -80;
   goldenBird.y = 150;
@@ -483,42 +484,31 @@ function startActualGame() {
 }
 
 // ---------- INPUT ----------
-function setTouchDirection(dir) {
-  if (!gameStarted || gameOver || gameWon) return;
+function setSwipeDirection(dir) {
+  if (!gameStarted || gameOver || gameWon) return false;
 
   if (dir === "up" && direction.y === 0) {
     nextDirection = { x: 0, y: -currentSpeed };
-  } else if (dir === "down" && direction.y === 0) {
-    nextDirection = { x: 0, y: currentSpeed };
-  } else if (dir === "left" && direction.x === 0) {
-    nextDirection = { x: -currentSpeed, y: 0 };
-  } else if (dir === "right" && direction.x === 0) {
-    nextDirection = { x: currentSpeed, y: 0 };
-  } else {
-    return;
+    return true;
   }
 
-  vibrateLight();
+  if (dir === "down" && direction.y === 0) {
+    nextDirection = { x: 0, y: currentSpeed };
+    return true;
+  }
+
+  if (dir === "left" && direction.x === 0) {
+    nextDirection = { x: -currentSpeed, y: 0 };
+    return true;
+  }
+
+  if (dir === "right" && direction.x === 0) {
+    nextDirection = { x: currentSpeed, y: 0 };
+    return true;
+  }
+
+  return false;
 }
-
-function bindTouch(btn, dir) {
-  btn.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    setTouchDirection(dir);
-    canvas.focus();
-  }, { passive: false });
-
-  btn.addEventListener("mousedown", (e) => {
-    e.preventDefault();
-    setTouchDirection(dir);
-    canvas.focus();
-  });
-}
-
-bindTouch(upBtn, "up");
-bindTouch(downBtn, "down");
-bindTouch(leftBtn, "left");
-bindTouch(rightBtn, "right");
 
 document.addEventListener("keydown", (e) => {
   if (waitingToStart && e.key === "Enter") {
@@ -534,23 +524,30 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
-  if (e.key === "ArrowUp" && direction.y === 0) {
-    nextDirection = { x: 0, y: -currentSpeed };
-  } else if (e.key === "ArrowDown" && direction.y === 0) {
-    nextDirection = { x: 0, y: currentSpeed };
-  } else if (e.key === "ArrowLeft" && direction.x === 0) {
-    nextDirection = { x: -currentSpeed, y: 0 };
-  } else if (e.key === "ArrowRight" && direction.x === 0) {
-    nextDirection = { x: currentSpeed, y: 0 };
+  if (e.key === "ArrowUp") {
+    setSwipeDirection("up");
+  } else if (e.key === "ArrowDown") {
+    setSwipeDirection("down");
+  } else if (e.key === "ArrowLeft") {
+    setSwipeDirection("left");
+  } else if (e.key === "ArrowRight") {
+    setSwipeDirection("right");
   }
 });
 
-function tryStartFromTap(e) {
+canvas.addEventListener("mousedown", (e) => {
   if (waitingToStart) {
     e.preventDefault();
     beginCountdown();
+    return;
   }
-}
+
+  if (isMobileDevice() && (gameOver || gameWon)) {
+    e.preventDefault();
+    resetGame();
+    beginCountdown();
+  }
+});
 
 canvas.addEventListener("touchstart", (e) => {
   const touch = e.touches[0];
@@ -561,46 +558,62 @@ canvas.addEventListener("touchstart", (e) => {
   if (waitingToStart) {
     e.preventDefault();
     beginCountdown();
+    return;
+  }
+
+  if (gameOver || gameWon) {
+    e.preventDefault();
+    resetGame();
+    beginCountdown();
   }
 }, { passive: false });
 
-canvas.addEventListener("touchend", (e) => {
+canvas.addEventListener("touchmove", (e) => {
+  if (waitingToStart || gameOver || gameWon) return;
   if (!swipeTracking) return;
-  swipeTracking = false;
 
-  if (!gameStarted || gameOver || gameWon) return;
-
-  const touch = e.changedTouches[0];
+  const touch = e.touches[0];
   const dx = touch.clientX - swipeStartX;
   const dy = touch.clientY - swipeStartY;
-
   const minSwipeDistance = 24;
+
   if (Math.abs(dx) < minSwipeDistance && Math.abs(dy) < minSwipeDistance) {
     return;
   }
 
+  let changed = false;
+
   if (Math.abs(dx) > Math.abs(dy)) {
-    if (dx > 0 && direction.x === 0) {
-      nextDirection = { x: currentSpeed, y: 0 };
-      vibrateLight();
-    } else if (dx < 0 && direction.x === 0) {
-      nextDirection = { x: -currentSpeed, y: 0 };
-      vibrateLight();
+    if (dx > 0) {
+      changed = setSwipeDirection("right");
+    } else {
+      changed = setSwipeDirection("left");
     }
   } else {
-    if (dy > 0 && direction.y === 0) {
-      nextDirection = { x: 0, y: currentSpeed };
-      vibrateLight();
-    } else if (dy < 0 && direction.y === 0) {
-      nextDirection = { x: 0, y: -currentSpeed };
-      vibrateLight();
+    if (dy > 0) {
+      changed = setSwipeDirection("down");
+    } else {
+      changed = setSwipeDirection("up");
     }
+  }
+
+  if (changed) {
+    vibrateLight();
+    swipeTracking = false;
   }
 }, { passive: true });
 
-canvas.addEventListener("mousedown", tryStartFromTap);
+canvas.addEventListener("touchend", () => {
+  swipeTracking = false;
+}, { passive: true });
 
 document.addEventListener("touchstart", (e) => {
+  const clickedButton =
+    e.target === muteButton ||
+    e.target === restartButton;
+
+  if (clickedButton) return;
+
   if (waitingToStart) {
     e.preventDefault();
     beginCountdown();
@@ -947,7 +960,7 @@ function drawTopHudBar() {
   ctx.lineTo(canvas.width, hudHeight);
   ctx.stroke();
 
-  const isMobile = window.innerWidth <= 900;
+  const isMobile = isMobileDevice();
   ctx.fillStyle = "white";
   ctx.font = isMobile ? "15px Arial" : "22px Arial";
 
@@ -1154,7 +1167,9 @@ function drawStartOverlay() {
 
   drawCenterTitle();
 
-  const startText = window.innerWidth <= 900 ? "Tap or Swipe to Start" : "Press Enter or Tap to Start";
+  const startText = isMobileDevice()
+    ? "Tap the Screen to Start"
+    : "Press Enter or Tap to Start";
 
   ctx.fillStyle = "rgba(255,255,255,0.95)";
   ctx.font = "42px Arial";
@@ -1204,7 +1219,12 @@ function drawGameOver() {
 
   ctx.font = "28px Arial";
   ctx.fillText("Final Score: " + score, canvas.width / 2, canvas.height / 2 + 30);
-  ctx.fillText("Press R or Restart", canvas.width / 2, canvas.height / 2 + 72);
+
+  const restartText = isMobileDevice()
+    ? "Tap to Restart"
+    : "Press R or Restart";
+
+  ctx.fillText(restartText, canvas.width / 2, canvas.height / 2 + 72);
   ctx.textAlign = "left";
 }
 
@@ -1223,7 +1243,12 @@ function drawWinScreen() {
   ctx.font = "28px Arial";
   ctx.fillText(`Reached Level ${maxLevel}`, canvas.width / 2, canvas.height / 2 + 24);
   ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 + 64);
-  ctx.fillText("Press R or Restart", canvas.width / 2, canvas.height / 2 + 104);
+
+  const restartText = isMobileDevice()
+    ? "Tap to Play Again"
+    : "Press R or Restart";
+
+  ctx.fillText(restartText, canvas.width / 2, canvas.height / 2 + 104);
   ctx.textAlign = "left";
 }
 
