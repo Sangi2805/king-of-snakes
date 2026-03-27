@@ -9,27 +9,18 @@ function isMobileDevice() {
   return window.innerWidth <= 900;
 }
 
-function getViewportHeight() {
-  if (window.visualViewport) {
-    return window.visualViewport.height;
-  }
-  return window.innerHeight;
-}
-
 function resizeCanvas() {
-  const viewportHeight = getViewportHeight();
-  canvas.width = window.innerWidth;
-  canvas.height = Math.max(220, Math.floor(viewportHeight - topbar.offsetHeight));
+  const width = window.innerWidth;
+  const height = Math.max(220, window.innerHeight - topbar.offsetHeight);
+
+  canvas.width = width;
+  canvas.height = height;
 }
 
-resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 window.addEventListener("orientationchange", () => {
-  setTimeout(resizeCanvas, 180);
+  setTimeout(resizeCanvas, 200);
 });
-if (window.visualViewport) {
-  window.visualViewport.addEventListener("resize", resizeCanvas);
-}
 
 const snakeSize = 20;
 const baseSpeed = 2;
@@ -220,15 +211,11 @@ muteButton.addEventListener("click", () => {
 });
 
 restartButton.addEventListener("click", () => {
+  resetGame();
+
   if (isMobileDevice()) {
-    if (gameOver || gameWon) {
-      resetGame();
-      beginCountdown();
-    } else {
-      resetGame();
-    }
+    beginCountdown();
   } else {
-    resetGame();
     if (document.activeElement) {
       document.activeElement.blur();
     }
@@ -484,7 +471,7 @@ function startActualGame() {
 }
 
 // ---------- INPUT ----------
-function setSwipeDirection(dir) {
+function setDirectionByName(dir) {
   if (!gameStarted || gameOver || gameWon) return false;
 
   if (dir === "up" && direction.y === 0) {
@@ -525,13 +512,13 @@ document.addEventListener("keydown", (e) => {
   }
 
   if (e.key === "ArrowUp") {
-    setSwipeDirection("up");
+    setDirectionByName("up");
   } else if (e.key === "ArrowDown") {
-    setSwipeDirection("down");
+    setDirectionByName("down");
   } else if (e.key === "ArrowLeft") {
-    setSwipeDirection("left");
+    setDirectionByName("left");
   } else if (e.key === "ArrowRight") {
-    setSwipeDirection("right");
+    setDirectionByName("right");
   }
 });
 
@@ -569,13 +556,12 @@ canvas.addEventListener("touchstart", (e) => {
 }, { passive: false });
 
 canvas.addEventListener("touchmove", (e) => {
-  if (waitingToStart || gameOver || gameWon) return;
-  if (!swipeTracking) return;
+  if (!gameStarted || gameOver || gameWon || !swipeTracking) return;
 
   const touch = e.touches[0];
   const dx = touch.clientX - swipeStartX;
   const dy = touch.clientY - swipeStartY;
-  const minSwipeDistance = 24;
+  const minSwipeDistance = 18;
 
   if (Math.abs(dx) < minSwipeDistance && Math.abs(dy) < minSwipeDistance) {
     return;
@@ -584,17 +570,13 @@ canvas.addEventListener("touchmove", (e) => {
   let changed = false;
 
   if (Math.abs(dx) > Math.abs(dy)) {
-    if (dx > 0) {
-      changed = setSwipeDirection("right");
-    } else {
-      changed = setSwipeDirection("left");
-    }
+    changed = dx > 0
+      ? setDirectionByName("right")
+      : setDirectionByName("left");
   } else {
-    if (dy > 0) {
-      changed = setSwipeDirection("down");
-    } else {
-      changed = setSwipeDirection("up");
-    }
+    changed = dy > 0
+      ? setDirectionByName("down")
+      : setDirectionByName("up");
   }
 
   if (changed) {
@@ -606,19 +588,6 @@ canvas.addEventListener("touchmove", (e) => {
 canvas.addEventListener("touchend", () => {
   swipeTracking = false;
 }, { passive: true });
-
-document.addEventListener("touchstart", (e) => {
-  const clickedButton =
-    e.target === muteButton ||
-    e.target === restartButton;
-
-  if (clickedButton) return;
-
-  if (waitingToStart) {
-    e.preventDefault();
-    beginCountdown();
-  }
-}, { passive: false });
 
 // ---------- UPDATE ----------
 function updateCountdown() {
@@ -943,7 +912,7 @@ function drawCenterTitle() {
   }
 
   ctx.fillStyle = "rgba(255,255,255,0.96)";
-  ctx.font = "54px Arial";
+  ctx.font = isMobileDevice() ? "34px Arial" : "54px Arial";
   ctx.textAlign = "center";
   ctx.fillText("King of Snakes", cx, cy + 115);
   ctx.textAlign = "left";
@@ -1060,13 +1029,11 @@ function drawWoods() {
     ctx.translate(wood.x, wood.y);
 
     ctx.fillStyle = "#7a7a7a";
-    ctx.beginPath();
-    ctx.roundRect(-wood.width / 2, -wood.height / 2, wood.width, wood.height, 8);
-    ctx.fill();
+    ctx.fillRect(-wood.width / 2, -wood.height / 2, wood.width, wood.height);
 
     ctx.strokeStyle = "#5d5d5d";
     ctx.lineWidth = 2;
-    ctx.stroke();
+    ctx.strokeRect(-wood.width / 2, -wood.height / 2, wood.width, wood.height);
 
     ctx.fillStyle = "#909090";
     ctx.fillRect(-3, -18, 6, 36);
@@ -1168,11 +1135,11 @@ function drawStartOverlay() {
   drawCenterTitle();
 
   const startText = isMobileDevice()
-    ? "Tap the Screen to Start"
+    ? "Tap to Start"
     : "Press Enter or Tap to Start";
 
   ctx.fillStyle = "rgba(255,255,255,0.95)";
-  ctx.font = "42px Arial";
+  ctx.font = isMobileDevice() ? "30px Arial" : "42px Arial";
   ctx.textAlign = "center";
   ctx.fillText(startText, canvas.width / 2, canvas.height / 2 + 200);
   ctx.textAlign = "left";
@@ -1200,7 +1167,7 @@ function drawLevelMessage() {
   if (!levelMessage) return;
 
   ctx.fillStyle = "rgba(255, 215, 0, 0.95)";
-  ctx.font = "42px Arial";
+  ctx.font = isMobileDevice() ? "30px Arial" : "42px Arial";
   ctx.textAlign = "center";
   ctx.fillText(levelMessage, canvas.width / 2, 115);
   ctx.textAlign = "left";
@@ -1213,11 +1180,11 @@ function drawGameOver() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.fillStyle = "white";
-  ctx.font = "48px Arial";
+  ctx.font = isMobileDevice() ? "44px Arial" : "48px Arial";
   ctx.textAlign = "center";
   ctx.fillText("Game Over", canvas.width / 2, canvas.height / 2 - 15);
 
-  ctx.font = "28px Arial";
+  ctx.font = isMobileDevice() ? "24px Arial" : "28px Arial";
   ctx.fillText("Final Score: " + score, canvas.width / 2, canvas.height / 2 + 30);
 
   const restartText = isMobileDevice()
@@ -1235,12 +1202,12 @@ function drawWinScreen() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.fillStyle = "#ffe27a";
-  ctx.font = "52px Arial";
+  ctx.font = isMobileDevice() ? "44px Arial" : "52px Arial";
   ctx.textAlign = "center";
   ctx.fillText("You Win!", canvas.width / 2, canvas.height / 2 - 20);
 
   ctx.fillStyle = "white";
-  ctx.font = "28px Arial";
+  ctx.font = isMobileDevice() ? "24px Arial" : "28px Arial";
   ctx.fillText(`Reached Level ${maxLevel}`, canvas.width / 2, canvas.height / 2 + 24);
   ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 + 64);
 
@@ -1285,6 +1252,7 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
+resizeCanvas();
 updateMuteButton();
 resetGame();
 gameLoop();
