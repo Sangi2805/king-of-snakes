@@ -15,7 +15,9 @@ King of Snakes is a jungle-themed snake web game built with HTML, CSS, and JavaS
 ## How to Play
 - On desktop: press **Enter** or click/tap to start
 - On mobile: tap to start
-- Use arrow keys or on-screen controls to move
+- Controls:
+- Desktop: Arrow keys
+- Mobile: Swipe or on-screen controls
 - Eat white eggs to grow and score
 - Golden eggs reduce speed and length
 - Pink egg gives a level jump bonus
