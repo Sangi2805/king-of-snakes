@@ -505,6 +505,22 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+function tryStartFromTap(e) {
+  if (waitingToStart) {
+    e.preventDefault();
+    beginCountdown();
+  }
+}
+
+canvas.addEventListener("touchstart", tryStartFromTap, { passive: false });
+canvas.addEventListener("mousedown", tryStartFromTap);
+document.addEventListener("touchstart", (e) => {
+  if (waitingToStart) {
+    e.preventDefault();
+    beginCountdown();
+  }
+}, { passive: false });
+
 // ---------- UPDATE ----------
 function updateCountdown() {
   if (!countdownActive) return;
@@ -686,7 +702,6 @@ function updateGame() {
     }
   }
 
-  // FIXED: golden egg reduces speed and keeps that reduction temporarily
   for (let i = 0; i < magicEggs.length; i++) {
     if (distance(head, magicEggs[i]) < snakeSize) {
       magicEggs.splice(i, 1);
@@ -1053,10 +1068,12 @@ function drawStartOverlay() {
 
   drawCenterTitle();
 
+  const startText = window.innerWidth <= 900 ? "Tap to Start" : "Press Enter or Tap to Start";
+
   ctx.fillStyle = "rgba(255,255,255,0.95)";
   ctx.font = "42px Arial";
   ctx.textAlign = "center";
-  ctx.fillText("Press Enter to Start", canvas.width / 2, canvas.height / 2 + 200);
+  ctx.fillText(startText, canvas.width / 2, canvas.height / 2 + 200);
   ctx.textAlign = "left";
 }
 
