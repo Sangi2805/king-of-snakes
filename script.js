@@ -4,18 +4,40 @@ const ctx = canvas.getContext("2d");
 const muteButton = document.getElementById("muteButton");
 const restartButton = document.getElementById("restartButton");
 const topbar = document.querySelector(".topbar");
+const mobileControls = document.querySelector(".mobile-controls");
 
 const upBtn = document.getElementById("upBtn");
 const downBtn = document.getElementById("downBtn");
 const leftBtn = document.getElementById("leftBtn");
 const rightBtn = document.getElementById("rightBtn");
 
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight - topbar.offsetHeight;
+function getViewportHeight() {
+  if (window.visualViewport) {
+    return window.visualViewport.height;
+  }
+  return window.innerHeight;
 }
+
+function resizeCanvas() {
+  const isMobile = window.innerWidth <= 900;
+  const controlsHeight = isMobile ? mobileControls.offsetHeight : 0;
+  const viewportHeight = getViewportHeight();
+
+  canvas.width = window.innerWidth;
+  canvas.height = Math.max(
+    220,
+    Math.floor(viewportHeight - topbar.offsetHeight - controlsHeight)
+  );
+}
+
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
+window.addEventListener("orientationchange", () => {
+  setTimeout(resizeCanvas, 180);
+});
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", resizeCanvas);
+}
 
 const snakeSize = 20;
 const baseSpeed = 2;
@@ -58,6 +80,10 @@ let normalEggSpawnTimer = 0;
 let goldenBirdLevelShown = 0;
 let pinkBirdLevelShown = 0;
 let frameCount = 0;
+
+let swipeStartX = 0;
+let swipeStartY = 0;
+let swipeTracking = false;
 
 const titleSnakeImage = new Image();
 let titleSnakeLoaded = false;
@@ -225,6 +251,12 @@ function saveBestScore() {
 }
 
 // ---------- HELPERS ----------
+function vibrateLight() {
+  if (navigator.vibrate) {
+    navigator.vibrate(20);
+  }
+}
+
 function randomPosition() {
   return {
     x: Math.random() * (canvas.width - 180) + 90,
@@ -373,6 +405,8 @@ function checkLevelProgression() {
 
 // ---------- RESET ----------
 function resetGame() {
+  resizeCanvas();
+
   currentSpeed = baseSpeed;
   eggsCollected = 0;
   score = 0;
@@ -431,9 +465,11 @@ function beginCountdown() {
   waitingToStart = false;
   countdownActive = true;
   countdownTimer = countdownFramesTotal;
+
   if (!isMuted) {
     startBackgroundMusic();
   }
+
   canvas.focus();
 }
 
@@ -458,7 +494,11 @@ function setTouchDirection(dir) {
     nextDirection = { x: -currentSpeed, y: 0 };
   } else if (dir === "right" && direction.x === 0) {
     nextDirection = { x: currentSpeed, y: 0 };
+  } else {
+    return;
   }
+
+  vibrateLight();
 }
 
 function bindTouch(btn, dir) {
@@ -512,8 +552,54 @@ function tryStartFromTap(e) {
   }
 }
 
-canvas.addEventListener("touchstart", tryStartFromTap, { passive: false });
+canvas.addEventListener("touchstart", (e) => {
+  const touch = e.touches[0];
+  swipeStartX = touch.clientX;
+  swipeStartY = touch.clientY;
+  swipeTracking = true;
+
+  if (waitingToStart) {
+    e.preventDefault();
+    beginCountdown();
+  }
+}, { passive: false });
+
+canvas.addEventListener("touchend", (e) => {
+  if (!swipeTracking) return;
+  swipeTracking = false;
+
+  if (!gameStarted || gameOver || gameWon) return;
+
+  const touch = e.changedTouches[0];
+  const dx = touch.clientX - swipeStartX;
+  const dy = touch.clientY - swipeStartY;
+
+  const minSwipeDistance = 24;
+  if (Math.abs(dx) < minSwipeDistance && Math.abs(dy) < minSwipeDistance) {
+    return;
+  }
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (dx > 0 && direction.x === 0) {
+      nextDirection = { x: currentSpeed, y: 0 };
+      vibrateLight();
+    } else if (dx < 0 && direction.x === 0) {
+      nextDirection = { x: -currentSpeed, y: 0 };
+      vibrateLight();
+    }
+  } else {
+    if (dy > 0 && direction.y === 0) {
+      nextDirection = { x: 0, y: currentSpeed };
+      vibrateLight();
+    } else if (dy < 0 && direction.y === 0) {
+      nextDirection = { x: 0, y: -currentSpeed };
+      vibrateLight();
+    }
+  }
+}, { passive: true });
+
 canvas.addEventListener("mousedown", tryStartFromTap);
+
 document.addEventListener("touchstart", (e) => {
   if (waitingToStart) {
     e.preventDefault();
@@ -1068,7 +1154,7 @@ function drawStartOverlay() {
 
   drawCenterTitle();
 
-  const startText = window.innerWidth <= 900 ? "Tap to Start" : "Press Enter or Tap to Start";
+  const startText = window.innerWidth <= 900 ? "Tap or Swipe to Start" : "Press Enter or Tap to Start";
 
   ctx.fillStyle = "rgba(255,255,255,0.95)";
   ctx.font = "42px Arial";
